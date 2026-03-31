@@ -198,7 +198,7 @@
     }
   }
 
-  function initAuth() {
+ function initAuth() {
     const script = document.createElement("script");
     script.src = "https://accounts.google.com/gsi/client";
     script.onload = () => {
@@ -206,7 +206,14 @@
         client_id: config.googleClientId,
         scope: requiredScopes,
         callback: (resp) => {
+          if (resp.error) {
+             showToast("Auth Error: " + resp.error);
+             return;
+          }
           state.accessToken = resp.access_token;
+          // Session ko temporary save karein (optional but helpful)
+          sessionStorage.setItem("temp_access_token", resp.access_token);
+          
           elements.authSection.style.display = "none";
           elements.mainApp.style.display = "block";
           elements.logoutButton.style.display = "inline-block";
@@ -215,6 +222,14 @@
           showToast("Welcome Back!");
         }
       });
+
+      // --- AUTO-LOGIN LOGIC ON REFRESH ---
+      // Agar pehle se logged in tha (Sheet ID hai), toh token request bhejo bina popup dikhaye
+      if (state.currentSheetId) {
+          console.log("Re-authenticating session...");
+          // 'prompt: none' user ko disturb nahi karega agar session valid hai
+          state.tokenClient.requestAccessToken({ prompt: 'none' });
+      }
     };
     document.head.appendChild(script);
   }
