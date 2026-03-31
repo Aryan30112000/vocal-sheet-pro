@@ -1,37 +1,228 @@
+/* --- CSS VARIABLES (Premium Palette) --- */
 :root {
     --bg: #000000;
-    --card: #1c1c1e;
-    --text: #ffffff;
-    --accent: #0a84ff;
+    --card: rgba(28, 28, 30, 0.7); /* Translucent Glass Effect */
+    --text: #FFFFFF;
+    --text-dim: #8e8e93;
+    --accent: #0a84ff; /* Apple Blue */
+    --accent-glow: rgba(10, 132, 255, 0.3);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --success: #30d158;
 }
 
+/* --- BASE STYLES --- */
 body {
     background: var(--bg);
     color: var(--text);
     margin: 0;
-    font-family: -apple-system, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
 }
 
-.app-container { width: 100%; max-width: 400px; padding: 20px; text-align: center; }
-h1 span { color: var(--accent); font-weight: 300; }
+/* Background Ambient Glow (Optional - Adds Depth) */
+body::before {
+    content: "";
+    position: fixed;
+    top: -10%; left: -10%;
+    width: 40%; height: 40%;
+    background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+    z-index: -1;
+}
 
-#visualizer { width: 100%; height: 80px; margin-bottom: 10px; }
+/* --- CONTAINER & HEADERS --- */
+.app-container {
+    width: 100%;
+    max-width: 420px;
+    padding: 24px;
+    box-sizing: border-box;
+}
 
-.input-group { background: var(--card); border-radius: 16px; padding: 10px; margin: 20px 0; }
-input, select { width: 100%; background: transparent; border: none; color: white; padding: 12px; font-size: 16px; outline: none; }
+h1 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -1px;
+    margin-bottom: 8px;
+}
 
-.actions { display: flex; gap: 15px; justify-content: center; }
-button { border: none; border-radius: 50px; font-weight: 600; cursor: pointer; transition: 0.2s; }
-button:active { transform: scale(0.95); }
+h1 span {
+    color: var(--accent);
+    font-weight: 300;
+    text-transform: uppercase;
+    font-size: 0.7em;
+    letter-spacing: 2px;
+    margin-left: 5px;
+}
 
-.btn-mic { background: var(--accent); width: 70px; height: 70px; font-size: 24px; }
-.btn-save { background: white; color: black; padding: 0 30px; height: 70px; }
-.btn-login { background: var(--accent); color: white; padding: 15px; width: 100%; font-size: 18px; }
+.status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    color: var(--text-dim);
+    margin-bottom: 40px;
+}
 
-#toast-container { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); }
-.toast { background: #2c2c2e; padding: 12px 24px; border-radius: 12px; margin-top: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); font-size: 14px; }
-.sheet-btn { display: block; margin-top: 30px; color: var(--accent); text-decoration: none; font-size: 14px; }
+/* --- VOICE VISUALIZER --- */
+#visualizer {
+    width: 100%;
+    height: 100px;
+    filter: drop-shadow(0 0 10px var(--accent));
+}
+
+#mic-status {
+    font-size: 14px;
+    color: var(--accent);
+    font-weight: 500;
+    margin-top: 5px;
+    letter-spacing: 0.5px;
+}
+
+/* --- INPUT GROUP (Glassmorphism) --- */
+.input-group {
+    background: var(--card);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    padding: 8px;
+    margin: 30px 0;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+input, select {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: white;
+    padding: 14px;
+    font-size: 17px;
+    outline: none;
+    box-sizing: border-box;
+}
+
+select {
+    border-bottom: 1px solid var(--glass-border);
+    margin-bottom: 5px;
+    font-size: 14px;
+    color: var(--text-dim);
+}
+
+/* --- BUTTONS (Apple Precision) --- */
+.actions {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    margin-top: 10px;
+}
+
+button {
+    border: none;
+    border-radius: 18px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-mic {
+    background: var(--accent);
+    color: white;
+    width: 72px;
+    height: 72px;
+    font-size: 28px;
+    box-shadow: 0 0 20px var(--accent-glow);
+}
+
+.btn-mic:hover {
+    box-shadow: 0 0 30px var(--accent);
+    transform: scale(1.05);
+}
+
+.btn-save {
+    background: #FFFFFF;
+    color: #000000;
+    flex-grow: 1;
+    padding: 0 24px;
+}
+
+.btn-save:hover {
+    background: #f0f0f0;
+    transform: translateY(-2px);
+}
+
+.btn-login {
+    background: var(--accent);
+    color: white;
+    padding: 18px;
+    width: 100%;
+    font-size: 18px;
+    border-radius: 20px;
+}
+
+/* --- DASHBOARD (Premium Cards) --- */
+#dashboard-section h2 {
+    font-size: 20px;
+    font-weight: 600;
+    margin-top: 40px;
+}
+
+.task-card {
+    background: var(--card);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(10px);
+    border-radius: 18px;
+    padding: 16px;
+    margin-bottom: 12px;
+    transition: transform 0.3s ease;
+}
+
+.task-card:hover {
+    transform: translateX(5px);
+    border-color: var(--accent);
+}
+
+/* --- TOASTS --- */
+#toast-container {
+    position: fixed;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 350px;
+    pointer-events: none;
+}
+
+.toast {
+    background: rgba(255, 255, 255, 0.95);
+    color: #000;
+    padding: 14px 20px;
+    border-radius: 14px;
+    margin-top: 10px;
+    font-weight: 500;
+    text-align: center;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+    animation: springUp 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes springUp {
+    from { transform: translateY(50px) scale(0.8); opacity: 0; }
+    to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.sheet-btn {
+    display: inline-block;
+    margin-top: 40px;
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 15px;
+    opacity: 0.8;
+    transition: opacity 0.3s;
+}
+
+.sheet-btn:hover { opacity: 1; }
