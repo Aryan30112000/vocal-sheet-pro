@@ -27,10 +27,9 @@
     authSection: document.getElementById("auth-section")
   };
 
-  function showToast(msg, type = "success") {
+  function showToast(msg) {
     const toast = document.createElement("div");
     toast.className = "toast";
-    toast.style.borderLeft = `4px solid ${type === "success" ? "#30d158" : "#ff453a"}`;
     toast.textContent = msg;
     elements.toastContainer.appendChild(toast);
     setTimeout(() => toast.remove(), 3000);
@@ -44,7 +43,7 @@
         const source = state.audioContext.createMediaStreamSource(stream);
         source.connect(state.analyser);
         drawWave();
-      }).catch(() => showToast("Mic access denied", "error"));
+      }).catch(() => showToast("Mic access denied"));
     }
   }
 
@@ -56,9 +55,7 @@
       requestAnimationFrame(animate);
       state.analyser.getByteTimeDomainData(dataArray);
       ctx.clearRect(0, 0, elements.canvas.width, elements.canvas.height);
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = "#0a84ff";
-      ctx.beginPath();
+      ctx.lineWidth = 2; ctx.strokeStyle = "#0a84ff"; ctx.beginPath();
       let sliceWidth = elements.canvas.width / bufferLength;
       let x = 0;
       for (let i = 0; i < bufferLength; i++) {
@@ -82,43 +79,40 @@
 
   async function findExistingSheet() {
     const query = encodeURIComponent("name = 'Vocal Sheet Pro' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false");
-    const data = await fetchJson(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`, {
-      headers: { Authorization: "Bearer " + state.accessToken }
-    });
-    if (data.files && data.files.length > 0) {
-      state.currentSheetId = data.files[0].id;
-      state.currentSheetUrl = `https://docs.google.com/spreadsheets/d/${state.currentSheetId}/edit`;
-      localStorage.setItem("google_sheet_id", state.currentSheetId);
-      localStorage.setItem("google_sheet_url", state.currentSheetUrl);
-      return true;
-    }
+    try {
+      const data = await fetchJson(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`, {
+        headers: { Authorization: "Bearer " + state.accessToken }
+      });
+      if (data.files && data.files.length > 0) {
+        state.currentSheetId = data.files[0].id;
+        state.currentSheetUrl = `https://docs.google.com/spreadsheets/d/${state.currentSheetId}/edit`;
+        localStorage.setItem("google_sheet_id", state.currentSheetId);
+        localStorage.setItem("google_sheet_url", state.currentSheetUrl);
+        return true;
+      }
+    } catch(e) {}
     return false;
   }
 
   async function createSheet() {
-    const found = await findExistingSheet();
-    if (found) return updateSheetUi();
-
-    showToast("Creating Stylized Pro Sheet...");
+    if (await findExistingSheet()) return updateSheetUi();
+    showToast("Creating Stylized Sheet...");
     const sheet = await fetchJson("https://sheets.googleapis.com/v4/spreadsheets", {
       method: "POST",
       headers: { Authorization: "Bearer " + state.accessToken, "Content-Type": "application/json" },
       body: JSON.stringify({ properties: { title: "Vocal Sheet Pro" } })
     });
-
     state.currentSheetId = sheet.spreadsheetId;
     state.currentSheetUrl = sheet.spreadsheetUrl;
     localStorage.setItem("google_sheet_id", state.currentSheetId);
     localStorage.setItem("google_sheet_url", state.currentSheetUrl);
-
-    // 1. Pehle Headers likho
+    
     await fetchJson(`https://sheets.googleapis.com/v4/spreadsheets/${state.currentSheetId}/values/Sheet1!A1:C1?valueInputOption=USER_ENTERED`, {
       method: "PUT",
       headers: { Authorization: "Bearer " + state.accessToken, "Content-Type": "application/json" },
       body: JSON.stringify({ values: [["CATEGORY", "TASK", "TIMESTAMP"]] })
     });
 
-    // 2. Ab Headers ko BOLD aur BADA (Size 12) karo
     await fetchJson(`https://sheets.googleapis.com/v4/spreadsheets/${state.currentSheetId}:batchUpdate`, {
       method: "POST",
       headers: { Authorization: "Bearer " + state.accessToken, "Content-Type": "application/json" },
@@ -126,37 +120,25 @@
         requests: [{
           repeatCell: {
             range: { startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 3 },
-            cell: {
-              userEnteredFormat: {
-                textFormat: { bold: true, fontSize: 12 },
-                backgroundColor: { red: 0.9, green: 0.9, blue: 0.9 } // Light Gray BG
-              }
-            },
+            cell: { userEnteredFormat: { textFormat: { bold: true, fontSize: 12 }, backgroundColor: { red: 0.9, green: 0.9, blue: 0.9 } } },
             fields: "userEnteredFormat(textFormat,backgroundColor)"
           }
         }]
       })
     });
-
     updateSheetUi();
   }
 
   function updateSheetUi() {
-    if (state.currentSheetUrl) {
-      elements.sheetLink.href = state.currentSheetUrl;
-      elements.sheetLink.style.display = "block";
-    }
+    if (state.currentSheetUrl) { elements.sheetLink.href = state.currentSheetUrl; elements.sheetLink.style.display = "block"; }
   }
 
   async function appendTask() {
     const rawText = elements.taskInput.value.trim();
-    if (!rawText) return showToast("Nothing to save!", "error");
-    showToast("Saving task...");
-
+    if (!rawText) return showToast("Type something!");
+    showToast("Saving...");
     try {
-      if (!state.currentSheetId) {
-          if (!(await findExistingSheet())) await createSheet();
-      }
+      if (!state.currentSheetId && !(await findExistingSheet())) await createSheet();
       let category = "General", task = rawText;
       if (rawText.includes(":")) {
         const parts = rawText.split(":");
@@ -168,13 +150,11 @@
         headers: { Authorization: "Bearer " + state.accessToken, "Content-Type": "application/json" },
         body: JSON.stringify({ values: [[category, task, new Date().toLocaleString()]] })
       });
-      showToast(`Saved to ${category}!`);
+      showToast(`Saved to ${category}`);
       elements.taskInput.value = "";
     } catch (e) {
-      if (e.message.toLowerCase().includes("not found")) {
-        state.currentSheetId = "";
-        await appendTask();
-      } else showToast(e.message, "error");
+      if (e.message.toLowerCase().includes("not found")) { state.currentSheetId = ""; await appendTask(); }
+      else showToast(e.message);
     }
   }
 
@@ -190,8 +170,9 @@
           elements.authSection.style.display = "none";
           elements.mainApp.style.display = "block";
           elements.logoutButton.style.display = "inline-block";
+          elements.authStatus.textContent = "Connected";
           findExistingSheet().then(() => updateSheetUi());
-          showToast("Connected to Google");
+          showToast("Welcome Back!");
         }
       });
     };
@@ -201,19 +182,15 @@
   function initSpeech() {
     const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
     state.recognition = new Speech();
-    state.recognition.onstart = () => { startVisualizer(); };
+    state.recognition.onstart = () => { startVisualizer(); document.getElementById("mic-status").textContent = "Listening..."; };
     state.recognition.onresult = (e) => { elements.taskInput.value = e.results[0][0].transcript; };
-    state.recognition.onend = () => showToast("Mic stopped");
+    state.recognition.onend = () => { document.getElementById("mic-status").textContent = "Tap to speak"; };
   }
 
   elements.loginButton.onclick = () => state.tokenClient.requestAccessToken({ prompt: "" });
-  elements.logoutButton.onclick = () => { state.accessToken = ""; location.reload(); };
-  elements.micButton.onclick = () => { 
-    state.recognition.lang = elements.langSelect.value;
-    state.recognition.start(); 
-  };
+  elements.logoutButton.onclick = () => { localStorage.clear(); location.reload(); };
+  elements.micButton.onclick = () => { state.recognition.lang = elements.langSelect.value; state.recognition.start(); };
   elements.saveTextButton.onclick = appendTask;
 
-  initAuth();
-  initSpeech();
+  initAuth(); initSpeech();
 })();
