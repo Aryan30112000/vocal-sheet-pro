@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vocal Sheet Pro | Say It and Save It</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #f4f4f9; padding: 20px; }
+        .card { max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        h1 { color: #1a73e8; }
+        select, input { width: 90%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; border-radius: 5px; border: none; font-weight: bold; }
+        .mic-btn { background: #34a853; color: white; }
+        .save-btn { background: #1a73e8; color: white; }
+        #message-banner { margin-top: 15px; padding: 10px; border-radius: 5px; min-height: 20px; }
+        #auth-status { font-size: 12px; color: #666; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>VOCAL SHEET PRO</h1>
+    <div id="auth-status">Checking connection...</div>
+
+    <select id="language-select">
+        <option value="en-IN">English (India)</option>
+        <option value="hi-IN">Hindi (India)</option>
+    </select>
+
+    <input type="text" id="task-input" placeholder="Your task will appear here...">
+
+    <div>
+        <button id="login-button" class="save-btn">Login with Google</button>
+        <button id="mic-button" class="mic-btn">🎤 Start Speaking</button>
+        <button id="save-text-button" class="save-btn">💾 Save Task</button>
+        <button id="logout-button" style="display:none; background:#eee;">Sign Out</button>
+    </div>
+
+    <div id="message-banner"></div>
+    <a id="sheet-link" target="_blank" style="display:none; margin-top:10px; color:#1a73e8; text-decoration:none;">📂 Open My Sheet</a>
+</div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
