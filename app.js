@@ -1,6 +1,6 @@
 (function () {
   const config = window.APP_CONFIG;
-  const requiredScopes = "openid email profile https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets";
+  const requiredScopes = "openid email profile https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.readonly";
 
   const state = {
     accessToken: "",
@@ -34,8 +34,34 @@
     return data;
   }
 
+  // --- SMART LOGIC: Pehle Drive mein dhoondo ---
+  async function findExistingSheet() {
+    setMessage("Searching for your existing sheet...");
+    const query = encodeURIComponent("name = 'Vocal Sheet Pro' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false");
+    const data = await fetchJson(`https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`, {
+      headers: { Authorization: "Bearer " + state.accessToken }
+    });
+
+    if (data.files && data.files.length > 0) {
+      state.currentSheetId = data.files[0].id;
+      state.currentSheetUrl = `https://docs.google.com/spreadsheets/d/${state.currentSheetId}/edit`;
+      localStorage.setItem("google_sheet_id", state.currentSheetId);
+      localStorage.setItem("google_sheet_url", state.currentSheetUrl);
+      return true;
+    }
+    return false;
+  }
+
   async function createSheet() {
-    setMessage("Creating Smart Sheet...");
+    // Pehle search karo, agar mil gayi toh nayi mat banao
+    const found = await findExistingSheet();
+    if (found) {
+      updateSheetUi();
+      setMessage("Found your existing sheet!");
+      return;
+    }
+
+    setMessage("No sheet found. Creating new one...");
     const sheet = await fetchJson("https://sheets.googleapis.com/v4/spreadsheets", {
       method: "POST",
       headers: { Authorization: "Bearer " + state.accessToken, "Content-Type": "application/json" },
@@ -53,18 +79,27 @@
       body: JSON.stringify({ values: [["CATEGORY", "TASK", "TIMESTAMP"]] })
     });
 
-    elements.sheetLink.href = state.currentSheetUrl;
-    elements.sheetLink.style.display = "inline-block";
-    setMessage("Smart Sheet Ready!");
+    updateSheetUi();
+    setMessage("New Smart Sheet Ready!");
+  }
+
+  function updateSheetUi() {
+    if (state.currentSheetUrl) {
+      elements.sheetLink.href = state.currentSheetUrl;
+      elements.sheetLink.style.display = "inline-block";
+    }
   }
 
   async function appendTask() {
     const rawText = elements.taskInput.value.trim();
-    if (!rawText) return setMessage("Speak or type something first!", true);
+    if (!rawText) return setMessage("Speak or type something!", true);
     setMessage("Saving...");
 
     try {
-      if (!state.currentSheetId) await createSheet();
+      if (!state.currentSheetId) {
+          const found = await findExistingSheet();
+          if (!found) await createSheet();
+      }
 
       let category = "General";
       let task = rawText;
@@ -100,11 +135,9 @@
           elements.authStatus.textContent = "Signed In";
           elements.loginButton.style.display = "none";
           elements.logoutButton.style.display = "inline";
-          if(state.currentSheetUrl) { 
-              elements.sheetLink.href = state.currentSheetUrl; 
-              elements.sheetLink.style.display = "inline-block"; 
-          }
-          setMessage("Logged In! Speak or Type.");
+          // Login hote hi pehle dhoondo
+          findExistingSheet().then(() => updateSheetUi());
+          setMessage("Logged In! Checking for your sheet...");
         }
       });
     };
@@ -113,18 +146,23 @@
 
   function initSpeech() {
     const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!Speech) return setMessage("Speech not supported", true);
     state.recognition = new Speech();
-    state.recognition.continuous = false;
-    state.recognition.interimResults = true;
-
-    state.recognition.onstart = () => { setMessage("Listening..."); };
+    state.recognition.onstart = () => setMessage("Listening...");
     state.recognition.onresult = (e) => { elements.taskInput.value = e.results[0][0].transcript; };
-    state.recognition.onend = () => { setMessage("Stopped. Edit then Save."); };
+    state.recognition.onend = () => setMessage("Stopped.");
   }
 
   elements.loginButton.onclick = () => state.tokenClient.requestAccessToken({ prompt: "" });
-  elements.logoutButton.onclick = () => { localStorage.clear(); location.reload(); };
+  
+  // LOGOUT FIX: localStorage.clear() hata diya
+  elements.logoutButton.onclick = () => { 
+      state.accessToken = ""; 
+      elements.authStatus.textContent = "Signed Out";
+      elements.loginButton.style.display = "inline";
+      elements.logoutButton.style.display = "none";
+      setMessage("Signed Out. Session Saved.");
+  };
+
   elements.micButton.onclick = () => { 
     state.recognition.lang = elements.langSelect.value;
     state.recognition.start(); 
