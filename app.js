@@ -24,7 +24,10 @@
     authStatus: document.getElementById("auth-status"),
     canvas: document.getElementById("visualizer"),
     mainApp: document.getElementById("main-app"),
-    authSection: document.getElementById("auth-section")
+    authSection: document.getElementById("auth-section"),
+    // Dashboard elements
+    taskList: document.getElementById("task-list"),
+    dashboardSection: document.getElementById("dashboard-section")
   };
 
   function showToast(msg) {
@@ -33,6 +36,37 @@
     toast.textContent = msg;
     elements.toastContainer.appendChild(toast);
     setTimeout(() => toast.remove(), 3000);
+  }
+
+  // --- DASHBOARD: Recent Tasks Fetch logic ---
+  async function fetchRecentTasks() {
+    if (!state.currentSheetId || !state.accessToken) return;
+    
+    try {
+      // Sheet1!A2:C11 se data la rahe hain (Headers chhod kar)
+      const data = await fetchJson(`https://sheets.googleapis.com/v4/spreadsheets/${state.currentSheetId}/values/Sheet1!A2:C11`, {
+        headers: { Authorization: "Bearer " + state.accessToken }
+      });
+
+      elements.taskList.innerHTML = ""; 
+
+      if (data.values && data.values.length > 0) {
+        elements.dashboardSection.style.display = "block";
+        // Reverse loop taaki naya sabse upar dikhe
+        data.values.reverse().slice(0, 5).forEach(row => {
+          const card = document.createElement("div");
+          card.style.cssText = "background: #1c1c1e; padding: 15px; border-radius: 12px; text-align: left; border-left: 3px solid #0a84ff; margin-bottom: 10px;";
+          card.innerHTML = `
+            <div style="font-size: 10px; color: #888; text-transform: uppercase; font-weight: bold;">${row[0] || 'GENERAL'}</div>
+            <div style="font-size: 15px; margin: 5px 0; color: white;">${row[1] || 'No Task'}</div>
+            <div style="font-size: 10px; color: #555;">${row[2] || ''}</div>
+          `;
+          elements.taskList.appendChild(card);
+        });
+      }
+    } catch (e) {
+      console.error("Dashboard error:", e);
+    }
   }
 
   function startVisualizer() {
@@ -113,6 +147,7 @@
       body: JSON.stringify({ values: [["CATEGORY", "TASK", "TIMESTAMP"]] })
     });
 
+    // Formatting Header
     await fetchJson(`https://sheets.googleapis.com/v4/spreadsheets/${state.currentSheetId}:batchUpdate`, {
       method: "POST",
       headers: { Authorization: "Bearer " + state.accessToken, "Content-Type": "application/json" },
@@ -130,7 +165,11 @@
   }
 
   function updateSheetUi() {
-    if (state.currentSheetUrl) { elements.sheetLink.href = state.currentSheetUrl; elements.sheetLink.style.display = "block"; }
+    if (state.currentSheetUrl) { 
+      elements.sheetLink.href = state.currentSheetUrl; 
+      elements.sheetLink.style.display = "block"; 
+      fetchRecentTasks(); // UI update hote hi dashboard load karein
+    }
   }
 
   async function appendTask() {
@@ -152,6 +191,7 @@
       });
       showToast(`Saved to ${category}`);
       elements.taskInput.value = "";
+      fetchRecentTasks(); // Task save hote hi dashboard refresh
     } catch (e) {
       if (e.message.toLowerCase().includes("not found")) { state.currentSheetId = ""; await appendTask(); }
       else showToast(e.message);
